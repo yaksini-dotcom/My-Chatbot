@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Member Details — Notes Circle</title>
+<style>
+  :root {
+    --yellow: #FDF6B2;
+    --yellow-deep: #E8DC7A;
+    --green: #D9F2E3;
+    --green-deep: #9FD8B5;
+    --text: #333;
+    --border: #ddd;
+    --bg: #ffffff;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    color: var(--text);
+    background: var(--bg);
+    background-color:rgb(151, 162, 132)
+  }
+
+  /* ---------- Top nav (same as index.html) ---------- */
+
+  .top-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .top-nav .brand {
+    font-size: 18px;
+    font-weight: bold;
+    color: var(--text);
+    text-decoration: none;
+  }
+
+  .top-nav .nav-link {
+    background: var(--green);
+    color: var(--text);
+    text-decoration: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-size: 14px;
+  }
+
+  .top-nav .nav-link:hover {
+    background: var(--green-deep);
+  }
+
+  /* ---------- Page layout ---------- */
+
+  .page {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 32px 24px 80px;
+  }
+
+  .page h1 {
+    font-size: 26px;
+    margin: 0 0 8px;
+  }
+
+  .page > p {
+    color: #555;
+    margin: 0 0 28px;
+  }
+
+  /* ---------- Form ---------- */
+
+  .form-card {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 20px;
+    margin-bottom: 36px;
+  }
+
+  .form-card h2 {
+    font-size: 18px;
+    margin: 0 0 4px;
+  }
+
+  .required-note {
+    font-size: 12px;
+    color: #777;
+    margin: 0 0 16px;
+  }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px 16px;
+  }
+
+  @media (max-width: 600px) {
+    .form-grid { grid-template-columns: 1fr; }
+  }
+
+  .field { display: flex; flex-direction: column; }
+  .field.full-width { grid-column: 1 / -1; }
+
+  .field label {
+    font-size: 13px;
+    margin-bottom: 4px;
+  }
+
+  .field label .required-star {
+    color: var(--green-deep);
+    font-weight: bold;
+  }
+
+  .field input,
+  .field select,
+  .field textarea {
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 8px;
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+  }
+
+  .field textarea {
+    resize: vertical;
+    min-height: 70px;
+  }
+
+  .form-actions {
+    margin-top: 16px;
+    display: flex;
+    gap: 10px;
+  }
+
+  .btn {
+    border: none;
+    border-radius: 4px;
+    padding: 10px 18px;
+    font-size: 14px;
+    cursor: pointer;
+  }
+
+  .btn-primary {
+    background: var(--green);
+    color: var(--text);
+  }
+
+  .btn-primary:hover { background: var(--green-deep); }
+
+  .btn-secondary {
+    background: var(--yellow);
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+
+  .btn-secondary:hover { background: var(--yellow-deep); }
+
+  /* ---------- Table ---------- */
+
+  .table-section h2 {
+    font-size: 18px;
+    margin: 0 0 12px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  th, td {
+    border: 1px solid var(--border);
+    padding: 8px;
+    text-align: left;
+  }
+
+  th {
+    background: var(--yellow);
+  }
+
+  .empty-row td {
+    text-align: center;
+    color: #888;
+    padding: 20px;
+  }
+
+  .action-btn {
+    border: none;
+    border-radius: 4px;
+    padding: 5px 9px;
+    font-size: 12px;
+    cursor: pointer;
+    margin-right: 4px;
+  }
+
+  .edit-btn { background: var(--yellow); }
+  .edit-btn:hover { background: var(--yellow-deep); }
+
+  .delete-btn { background: var(--green); }
+  .delete-btn:hover { background: var(--green-deep); }
+</style>
+</head>
+<body>
+
+  <nav class="top-nav">
+    <a href="index.html" class="brand">Notes Circle</a>
+    <a href="member-form.html" class="nav-link">Member Details</a>
+  </nav>
+
+  <div class="page">
+    <h1>Member Details</h1>
+    <p>Add yourself to the circle, or edit an existing row below — submitting again while editing updates that row instead of adding a new one.</p>
+
+    <div class="form-card">
+      <h2 id="formTitle">Add a Member</h2>
+      <p class="required-note">Fields marked with * are required.</p>
+      <form id="memberForm">
+        <div class="form-grid">
+          <div class="field">
+            <label for="firstName">First Name <span class="required-star">*</span></label>
+            <input type="text" id="firstName" required />
+          </div>
+          <div class="field">
+            <label for="lastName">Last Name <span class="required-star">*</span></label>
+            <input type="text" id="lastName" required />
+          </div>
+
+          <div class="field full-width">
+            <label for="address">Address <span class="required-star">*</span></label>
+            <input type="text" id="address" required />
+          </div>
+
+          <div class="field">
+            <label for="age">Age <span class="required-star">*</span></label>
+            <input type="number" id="age" min="0" max="120" required />
+          </div>
+          <div class="field">
+            <label for="gender">Gender <span class="required-star">*</span></label>
+            <select id="gender" required>
+              <option value="" disabled selected>Select one</option>
+              <option value="Female">Female</option>
+              <option value="Male">Male</option>
+              <option value="Other">Other</option>
+              <option value="Prefer not to say">Prefer not to say</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="phone">Phone Number <span class="required-star">*</span></label>
+            <input type="tel" id="phone" required />
+          </div>
+          <div class="field">
+            <label for="email">Email <span class="required-star">*</span></label>
+            <input type="email" id="email" required />
+          </div>
+
+          <div class="field full-width">
+            <label for="description">Description</label>
+            <textarea id="description"></textarea>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary" id="submitBtn">Add Member</button>
+          <button type="button" class="btn btn-secondary" id="cancelEditBtn" hidden>Cancel Edit</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="table-section">
+      <h2>Circle Members</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>First Name</th>
+            <th>Last Name</th>
+            <th>Address</th>
+            <th>Age</th>
+            <th>Gender</th>
+            <th>Phone</th>
+            <th>Email</th>
+            <th>Description</th>
+            <th>Submitted At</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="membersTableBody">
+          <tr class="empty-row">
+            <td colspan="10">No members added yet.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    
+    let members = [];
+    let nextId = 1;
+    let editingId = null;
+
+    const form = document.getElementById('memberForm');
+    const tableBody = document.getElementById('membersTableBody');
+    const submitBtn = document.getElementById('submitBtn');
+    const cancelEditBtn = document.getElementById('cancelEditBtn');
+    const formTitle = document.getElementById('formTitle');
+
+    const firstNameInput = document.getElementById('firstName');
+    const lastNameInput = document.getElementById('lastName');
+    const addressInput = document.getElementById('address');
+    const ageInput = document.getElementById('age');
+    const genderInput = document.getElementById('gender');
+    const phoneInput = document.getElementById('phone');
+    const emailInput = document.getElementById('email');
+    const descriptionInput = document.getElementById('description');
+
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+
+      const entryData = {
+        firstName: firstNameInput.value.trim(),
+        lastName: lastNameInput.value.trim(),
+        address: addressInput.value.trim(),
+        age: ageInput.value.trim(),
+        gender: genderInput.value,
+        phone: phoneInput.value.trim(),
+        email: emailInput.value.trim(),
+        description: descriptionInput.value.trim(),
+        submittedAt: new Date().toLocaleString()
+      };
+
+      if (editingId !== null) {
+        const index = members.findIndex(function (m) { return m.id === editingId; });
+        if (index !== -1) {
+          entryData.id = editingId;
+          members[index] = entryData;
+        }
+      } else {
+        entryData.id = nextId;
+        nextId++;
+        members.push(entryData);
+      }
+
+      renderTable();
+      resetForm();
+    });
+
+    cancelEditBtn.addEventListener('click', resetForm);
+
+    function renderTable() {
+      tableBody.innerHTML = '';
+
+      if (members.length === 0) {
+        tableBody.innerHTML = '<tr class="empty-row"><td colspan="10">No members added yet.</td></tr>';
+        return;
+      }
+
+      members.forEach(function (m) {
+        const row = document.createElement('tr');
+        row.innerHTML =
+          '<td>' + m.firstName + '</td>' +
+          '<td>' + m.lastName + '</td>' +
+          '<td>' + m.address + '</td>' +
+          '<td>' + m.age + '</td>' +
+          '<td>' + m.gender + '</td>' +
+          '<td>' + m.phone + '</td>' +
+          '<td>' + m.email + '</td>' +
+          '<td>' + m.description + '</td>' +
+          '<td>' + m.submittedAt + '</td>' +
+          '<td>' +
+            '<button type="button" class="action-btn edit-btn" data-id="' + m.id + '">Edit</button>' +
+            '<button type="button" class="action-btn delete-btn" data-id="' + m.id + '">Delete</button>' +
+          '</td>';
+        tableBody.appendChild(row);
+      });
+
+      document.querySelectorAll('.edit-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          startEdit(parseInt(btn.dataset.id, 10));
+        });
+      });
+
+      document.querySelectorAll('.delete-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          deleteMember(parseInt(btn.dataset.id, 10));
+        });
+      });
+    }
+
+    function startEdit(id) {
+      const m = members.find(function (member) { return member.id === id; });
+      if (!m) return;
+
+      editingId = id;
+
+      firstNameInput.value = m.firstName;
+      lastNameInput.value = m.lastName;
+      addressInput.value = m.address;
+      ageInput.value = m.age;
+      genderInput.value = m.gender;
+      phoneInput.value = m.phone;
+      emailInput.value = m.email;
+      descriptionInput.value = m.description;
+
+      submitBtn.textContent = 'Update Member';
+      formTitle.textContent = 'Edit Member';
+      cancelEditBtn.hidden = false;
+    }
+
+    function deleteMember(id) {
+      members = members.filter(function (m) { return m.id !== id; });
+      if (editingId === id) resetForm();
+      renderTable();
+    }
+
+    function resetForm() {
+      form.reset();
+      editingId = null;
+      submitBtn.textContent = 'Add Member';
+      formTitle.textContent = 'Add a Member';
+      cancelEditBtn.hidden = true;
+    }
+  </script>
+
+</body>
+</html>
