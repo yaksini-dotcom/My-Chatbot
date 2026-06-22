@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Sign In — Notes Circle</title>
+<link rel="stylesheet" href="../static/css/style.css" />
+</head>
+<body>
+  <nav class="top-nav">
+    <a href="index.html" class="brand">Notes Circle</a>
+    <a href="index.html" class="nav-link">Back to Board</a>
+  </nav>
+
+  <div class="page">
+    <div class="login-card">
+      <h1>Sign In</h1>
+      <p class="subtitle">Join the circle to upload notes and photos.</p>
+
+      <form id="loginForm">
+        <div class="field">
+          <label for="email">Email</label>
+          <input type="email" id="email" required />
+        </div>
+
+        <div class="field">
+          <label for="password">Password</label>
+          <input type="password" id="password" required />
+        </div>
+
+        <p class="error-text" id="errorText">Please fill in every field.</p>
+
+        <button type="submit" class="btn btn-primary">Sign In</button>
+      </form>
+
+      <p class="note-line">This is a demo sign-in — no account is actually verified.</p>
+    </div>
+  </div>
+
+  <script src="../static/js/script.js"></script>
+</body>
+</html>

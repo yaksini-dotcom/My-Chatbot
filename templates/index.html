@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Notes Circle</title>
+<link rel="stylesheet" href="../static/css/style.css" />
+</head>
+<body>
+  <nav class="top-nav">
+    <a href="index.html" class="brand">Notes Circle</a>
+    <div class="nav-right">
+      <a href="member-form.html" class="nav-link">Contact Details</a>
+      <a href="login.html" id="signInLink" class="nav-link secondary">Sign In</a>
+      <span id="welcomeText" style="display:none;"></span>
+      <button type="button" id="uploadBtn" class="nav-link" style="display:none;">Upload</button>
+      <button type="button" id="logoutBtn" class="nav-link secondary" style="display:none;">Log Out</button>
+    </div>
+  </nav>
+
+  <div class="page">
+    <header class="hero">
+      <h1>One shared notebook for the whole group.</h1>
+      <p> Notes Circle is where the group's notes live, the same way a group chat is where the group's messages live.</p>
+    </header>
+
+    <div class="board-grid" id="boardGrid">
+      <div class="note note--yellow">
+        June reading list — add your pick before Friday's call.
+        <span class="author">— Yaksu</span>
+      </div>
+      <div class="note note--green">
+        Grandma's lemon cake recipe, finally written down properly.
+        <span class="author">— Shana</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Upload modal -->
+  <div class="modal-overlay" id="uploadModal">
+    <div class="modal-card">
+      <h2>Add a Note</h2>
+      <div class="modal-field">
+        <label for="noteText">Note text</label>
+        <textarea id="noteText" rows="3" placeholder="Write your note..."></textarea>
+      </div>
+      <div class="modal-field">
+        <label for="noteImage">Attach an image (optional)</label>
+        <input type="file" id="noteImage" accept="image/*" />
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" id="cancelUploadBtn">Cancel</button>
+        <button type="button" class="btn btn-primary" id="saveUploadBtn">Post Note</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chat widget -->
+  <button id="chat-icon">💬</button>
+
+  <div id="chat-box">
+    <div id="chat-header">Circle Assistant</div>
+    <div id="chat-messages"></div>
+    <div id="chat-input-area">
+      <input type="text" id="chat-input" placeholder="Type a message..." />
+      <button id="send-button">Send</button>
+    </div>
+  </div>
+
+  <script src="../static/js/script.js"></script>
+</body>
+</html>
