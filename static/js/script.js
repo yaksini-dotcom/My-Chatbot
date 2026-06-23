@@ -1,12 +1,4 @@
-/* ====================================================
-   Notes Circle — shared script
-   Used by: index.html, member-form.html
-   Each section is self-contained and exits early if the
-   page it belongs to isn't loaded, so one file can safely
-   be shared across every page.
-   ==================================================== */
 
-// ===== Chat widget (index.html) =====
 (function () {
   const chatIcon = document.getElementById('chat-icon');
   const chatBox = document.getElementById('chat-box');
@@ -71,7 +63,7 @@
   }
 })();
 
-// ===== Login-aware nav + upload modal (index.html) =====
+
 (function () {
   const signInLink = document.getElementById('signInLink');
   const uploadBtn = document.getElementById('uploadBtn');
@@ -218,7 +210,7 @@
   loadSavedNotes();
 })();
 
-// ===== Login form (login.html) =====
+
 (function () {
   const form = document.getElementById('loginForm');
   const emailInput = document.getElementById('email');
@@ -246,18 +238,15 @@
     const user = { displayName: displayName, email: email };
     localStorage.setItem(USER_KEY, JSON.stringify(user));
 
-    window.location.href = 'index.html';
+    window.location.href = '/';
   });
 })();
 
-// ===== Member form page (member-form.html) =====
 (function () {
   const form = document.getElementById('memberForm');
   const tableBody = document.getElementById('membersTableBody');
 
   if (!form || !tableBody) return;
-
-  const MEMBERS_KEY = 'notesCircleMembers';
 
   const submitBtn = document.getElementById('submitBtn');
   const cancelEditBtn = document.getElementById('cancelEditBtn');
@@ -272,61 +261,105 @@
   const emailInput = document.getElementById('email');
   const descriptionInput = document.getElementById('description');
 
-  // ---- localStorage persistence (JSON) ----
-
-  function loadMembers() {
-    try {
-      const raw = localStorage.getItem(MEMBERS_KEY);
-      const parsed = raw ? JSON.parse(raw) : [];
-      return Array.isArray(parsed) ? parsed : [];
-    } catch (e) {
-      return [];
-    }
-  }
-
-  function saveMembers() {
-    localStorage.setItem(MEMBERS_KEY, JSON.stringify(members));
-  }
-
-  let members = loadMembers();
-  let nextId = members.reduce(function (max, m) { return Math.max(max, m.id); }, 0) + 1;
   let editingId = null;
+
+  
+
+  function apiFetch(path, options) {
+    return fetch(path, Object.assign({ headers: { 'Content-Type': 'application/json' } }, options))
+      .then(function (res) {
+        if (!res.ok) return res.json().then(function (e) { throw e; });
+        
+        return res.status === 204 ? [] : res.json();
+      });
+  }
+
+  function fetchMembers() {
+    return apiFetch('/api/members');
+  }
+
+  function createMember(data) {
+    return apiFetch('/api/members', { method: 'POST', body: JSON.stringify(data) });
+  }
+
+  function updateMember(id, data) {
+    return apiFetch('/api/members/' + id, { method: 'PATCH', body: JSON.stringify(data) });
+  }
+
+  function deleteMemberApi(id) {
+    return apiFetch('/api/members/' + id, { method: 'DELETE' });
+  }
+
+  
+
+  function normalise(row) {
+    return {
+      id:          row.id,
+      firstName:   row.FirstName   || row.firstName   || '',
+      lastName:    row.LastName    || row.lastName    || '',
+      address:     row.Address     || row.address     || '',
+      age:         row.Age         || row.age         || '',
+      gender:      row.Gender      || row.gender      || '',
+      phone:       row.Phone       || row.phone       || '',
+      email:       row.Email       || row.email       || '',
+      description: row.Description || row.description || '',
+      submittedAt: row.SubmittedAt || row.submittedAt || '',
+    };
+  }
+
+  
 
   form.addEventListener('submit', function (e) {
     e.preventDefault();
 
     const entryData = {
-      firstName: firstNameInput.value.trim(),
-      lastName: lastNameInput.value.trim(),
-      address: addressInput.value.trim(),
-      age: ageInput.value.trim(),
-      gender: genderInput.value,
-      phone: phoneInput.value.trim(),
-      email: emailInput.value.trim(),
+      firstName:   firstNameInput.value.trim(),
+      lastName:    lastNameInput.value.trim(),
+      address:     addressInput.value.trim(),
+      age:         ageInput.value.trim(),
+      gender:      genderInput.value,
+      phone:       phoneInput.value.trim(),
+      email:       emailInput.value.trim(),
       description: descriptionInput.value.trim(),
-      submittedAt: new Date().toLocaleString()
+      submittedAt: new Date().toLocaleString(),
     };
 
-    if (editingId !== null) {
-      const index = members.findIndex(function (m) { return m.id === editingId; });
-      if (index !== -1) {
-        entryData.id = editingId;
-        members[index] = entryData;
-      }
-    } else {
-      entryData.id = nextId;
-      nextId++;
-      members.push(entryData);
-    }
+    setFormBusy(true);
 
-    saveMembers();
-    renderTable();
-    resetForm();
+    var apiCall = editingId !== null
+      ? updateMember(editingId, entryData)
+      : createMember(entryData);
+
+    apiCall
+      .then(function () {
+        resetForm();
+        return loadAndRender();
+      })
+      .catch(function (err) {
+        console.error('Save failed:', err);
+        alert('Could not save member. Check the console for details.');
+      })
+      .finally(function () {
+        setFormBusy(false);
+      });
   });
 
   cancelEditBtn.addEventListener('click', resetForm);
 
-  function renderTable() {
+  
+
+  function loadAndRender() {
+    return fetchMembers()
+      .then(function (rows) {
+        renderTable(Array.isArray(rows) ? rows.map(normalise) : []);
+      })
+      .catch(function (err) {
+        console.error('Load failed:', err);
+        tableBody.innerHTML = '<tr class="empty-row"><td colspan="10">Failed to load members.</td></tr>';
+      });
+  }
+
+  function renderTable(members) {
     tableBody.innerHTML = '';
 
     if (members.length === 0) {
@@ -337,69 +370,97 @@
     members.forEach(function (m) {
       const row = document.createElement('tr');
       row.innerHTML =
-        '<td>' + m.firstName + '</td>' +
-        '<td>' + m.lastName + '</td>' +
-        '<td>' + m.address + '</td>' +
-        '<td>' + m.age + '</td>' +
-        '<td>' + m.gender + '</td>' +
-        '<td>' + m.phone + '</td>' +
-        '<td>' + m.email + '</td>' +
-        '<td>' + m.description + '</td>' +
-        '<td>' + m.submittedAt + '</td>' +
+        '<td>' + esc(m.firstName)   + '</td>' +
+        '<td>' + esc(m.lastName)    + '</td>' +
+        '<td>' + esc(m.address)     + '</td>' +
+        '<td>' + esc(m.age)         + '</td>' +
+        '<td>' + esc(m.gender)      + '</td>' +
+        '<td>' + esc(m.phone)       + '</td>' +
+        '<td>' + esc(m.email)       + '</td>' +
+        '<td>' + esc(m.description) + '</td>' +
+        '<td>' + esc(m.submittedAt) + '</td>' +
         '<td>' +
-          '<button type="button" class="action-btn edit-btn" data-id="' + m.id + '">Edit</button>' +
+          '<button type="button" class="action-btn edit-btn"   data-id="' + m.id + '">Edit</button>' +
           '<button type="button" class="action-btn delete-btn" data-id="' + m.id + '">Delete</button>' +
         '</td>';
       tableBody.appendChild(row);
     });
 
-    document.querySelectorAll('.edit-btn').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        startEdit(parseInt(btn.dataset.id, 10));
-      });
+    tableBody.querySelectorAll('.edit-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () { startEdit(parseInt(btn.dataset.id, 10)); });
     });
 
-    document.querySelectorAll('.delete-btn').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        deleteMember(parseInt(btn.dataset.id, 10));
-      });
+    tableBody.querySelectorAll('.delete-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () { deleteMember(parseInt(btn.dataset.id, 10)); });
     });
   }
 
+  
+
   function startEdit(id) {
-    const m = members.find(function (member) { return member.id === id; });
-    if (!m) return;
+    fetchMembers()
+      .then(function (rows) {
+        const raw = rows.find(function (r) { return r.id === id; });
+        if (!raw) return;
+        const m = normalise(raw);
 
-    editingId = id;
+        editingId = id;
+        firstNameInput.value   = m.firstName;
+        lastNameInput.value    = m.lastName;
+        addressInput.value     = m.address;
+        ageInput.value         = m.age;
+        genderInput.value      = m.gender;
+        phoneInput.value       = m.phone;
+        emailInput.value       = m.email;
+        descriptionInput.value = m.description;
 
-    firstNameInput.value = m.firstName;
-    lastNameInput.value = m.lastName;
-    addressInput.value = m.address;
-    ageInput.value = m.age;
-    genderInput.value = m.gender;
-    phoneInput.value = m.phone;
-    emailInput.value = m.email;
-    descriptionInput.value = m.description;
-
-    submitBtn.textContent = 'Update Member';
-    formTitle.textContent = 'Edit Member';
-    cancelEditBtn.hidden = false;
+        submitBtn.textContent    = 'Update Member';
+        formTitle.textContent    = 'Edit Member';
+        cancelEditBtn.hidden     = false;
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      })
+      .catch(function (err) { console.error('Edit fetch failed:', err); });
   }
 
   function deleteMember(id) {
-    members = members.filter(function (m) { return m.id !== id; });
-    saveMembers();
-    if (editingId === id) resetForm();
-    renderTable();
+    if (!confirm('Delete this member?')) return;
+    deleteMemberApi(id)
+      .then(function () {
+        if (editingId === id) resetForm();
+        return loadAndRender();
+      })
+      .catch(function (err) {
+        console.error('Delete failed:', err);
+        alert('Could not delete member. Check the console for details.');
+      });
   }
+
+  
 
   function resetForm() {
     form.reset();
     editingId = null;
     submitBtn.textContent = 'Add Member';
     formTitle.textContent = 'Add a Member';
-    cancelEditBtn.hidden = true;
+    cancelEditBtn.hidden  = true;
   }
 
-  renderTable();
+  function setFormBusy(busy) {
+    submitBtn.disabled = busy;
+    submitBtn.textContent = busy
+      ? (editingId !== null ? 'Saving…' : 'Adding…')
+      : (editingId !== null ? 'Update Member' : 'Add Member');
+  }
+
+  
+  function esc(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  // Initial load
+  loadAndRender();
 })();
