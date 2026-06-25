@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>All Notes — Notes Circle</title>
-<link rel="stylesheet" href="../static/css/style.css" />
+<link rel="stylesheet" href="/static/css/style.css" />
 </head>
 <body>
 
@@ -12,28 +12,75 @@
     <a href="/" class="brand">Notes Circle</a>
     <div class="nav-right">
       <a href="/notes" class="nav-link">All Notes</a>
-      <a href="/member-form" class="nav-link">Contact Details</a>
       <a href="/login" id="signInLink" class="nav-link secondary">Sign In</a>
       <span id="welcomeText" style="display:none;"></span>
       <button type="button" id="logoutBtn" class="nav-link secondary" style="display:none;">Log Out</button>
     </div>
   </nav>
 
-  <div class="page">
+  <div class="page notes-page">
+
+    <div class="notes-top">
+      <h1>All Notes</h1>
+      <p class="notes-subtitle">Browse notes shared by everyone in the circle</p>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-card stat-purple">
+        <div class="stat-icon">📝</div>
+        <div class="stat-info">
+          <div class="stat-label">Total Notes</div>
+          <div class="stat-value" id="statTotalNotes">—</div>
+          <div class="stat-sub">All time</div>
+        </div>
+      </div>
+      <div class="stat-card stat-blue">
+        <div class="stat-icon">👥</div>
+        <div class="stat-info">
+          <div class="stat-label">Contributors</div>
+          <div class="stat-value" id="statTotalUsers">—</div>
+          <div class="stat-sub">All time</div>
+        </div>
+      </div>
+      <div class="stat-card stat-green">
+        <div class="stat-icon">📅</div>
+        <div class="stat-info">
+          <div class="stat-label">Notes Today</div>
+          <div class="stat-value" id="statNotesToday">—</div>
+          <div class="stat-sub">Today</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="notes-toolbar">
+      <input type="text" id="noteSearchInput" class="notes-search" placeholder="Search notes by content..." />
+      <select id="userFilterSelect" class="notes-filter">
+        <option value="">All Users</option>
+      </select>
+      <select id="sortSelect" class="notes-filter">
+        <option value="newest">Latest First</option>
+        <option value="oldest">Oldest First</option>
+      </select>
+      <button type="button" class="btn btn-secondary" id="refreshBtn">↻ Refresh</button>
+    </div>
+
     <div class="notes-header">
-      <h1>
-        All Notes
+      <h2>
+        Notes
         <span class="badge" id="noteCount">…</span>
-      </h1>
-      <button type="button" class="btn btn-primary" id="refreshBtn">↻ Refresh</button>
+      </h2>
     </div>
 
     <div class="notes-grid" id="notesGrid">
       <div class="loading-state">Loading notes…</div>
     </div>
+
+    <div class="notes-pagination" id="notesPagination"></div>
+    <p class="notes-pagination-summary" id="notesPaginationSummary"></p>
+
   </div>
 
-  <script src="../static/js/script.js"></script>
+  <script src="/static/js/script.js"></script>
 
 </body>
 </html>

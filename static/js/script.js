@@ -1,3 +1,4 @@
+
 /* ====================================================
    Notes Circle — shared script
    Used by: index.html, member-form.html
@@ -187,24 +188,63 @@
   }
 })();
 
-// ===== Login-aware nav + upload modal (index.html) =====
+// ===== Login-aware nav (any page with Sign In / Log Out links) =====
 (function () {
   const signInLink = document.getElementById('signInLink');
-  const uploadBtn = document.getElementById('uploadBtn');
   const logoutBtn = document.getElementById('logoutBtn');
   const welcomeText = document.getElementById('welcomeText');
-  const boardGrid = document.getElementById('boardGrid');
 
-  if (!signInLink || !uploadBtn || !logoutBtn || !welcomeText || !boardGrid) return;
+  if (!signInLink || !logoutBtn || !welcomeText) return;
 
   const USER_KEY = 'notesCircleUser';
-  const NOTES_KEY = 'notesCircleNotes';
 
+  function getCurrentUser() {
+    try {
+      const raw = localStorage.getItem(USER_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function refreshNav() {
+    const user = getCurrentUser();
+    if (user) {
+      signInLink.style.display = 'none';
+      logoutBtn.style.display = 'inline-block';
+      welcomeText.style.display = 'inline';
+      welcomeText.textContent = 'Hi, ' + user.displayName;
+    } else {
+      signInLink.style.display = 'inline-block';
+      logoutBtn.style.display = 'none';
+      welcomeText.style.display = 'none';
+    }
+  }
+
+  logoutBtn.addEventListener('click', function () {
+    localStorage.removeItem(USER_KEY);
+    refreshNav();
+  });
+
+  refreshNav();
+})();
+
+// ===== Upload modal (index.html only) =====
+(function () {
+  const uploadBtn = document.getElementById('uploadBtn');
+  const boardGrid = document.getElementById('boardGrid');
   const uploadModal = document.getElementById('uploadModal');
   const noteTextInput = document.getElementById('noteText');
   const noteImageInput = document.getElementById('noteImage');
   const saveUploadBtn = document.getElementById('saveUploadBtn');
   const cancelUploadBtn = document.getElementById('cancelUploadBtn');
+
+  if (!uploadBtn || !boardGrid || !uploadModal || !noteTextInput || !noteImageInput || !saveUploadBtn || !cancelUploadBtn) {
+    return;
+  }
+
+  const USER_KEY = 'notesCircleUser';
+  const NOTES_KEY = 'notesCircleNotes';
 
   function getCurrentUser() {
     try {
@@ -229,20 +269,8 @@
     localStorage.setItem(NOTES_KEY, JSON.stringify(notes));
   }
 
-  function refreshNav() {
-    const user = getCurrentUser();
-    if (user) {
-      signInLink.style.display = 'none';
-      uploadBtn.style.display = 'inline-block';
-      logoutBtn.style.display = 'inline-block';
-      welcomeText.style.display = 'inline';
-      welcomeText.textContent = 'Hi, ' + user.displayName;
-    } else {
-      signInLink.style.display = 'inline-block';
-      uploadBtn.style.display = 'none';
-      logoutBtn.style.display = 'none';
-      welcomeText.style.display = 'none';
-    }
+  function refreshUploadVisibility() {
+    uploadBtn.style.display = getCurrentUser() ? 'inline-block' : 'none';
   }
 
   function renderNoteCard(note) {
@@ -325,12 +353,7 @@
     if (e.target === uploadModal) closeUploadModal();
   });
 
-  logoutBtn.addEventListener('click', function () {
-    localStorage.removeItem(USER_KEY);
-    refreshNav();
-  });
-
-  refreshNav();
+  refreshUploadVisibility();
   loadSavedNotes();
 })();
 
@@ -362,57 +385,110 @@
     const user = { displayName: displayName, email: email };
     localStorage.setItem(USER_KEY, JSON.stringify(user));
 
-    window.location.href = 'index.html';
+    window.location.href = '/';
   });
 })();
 
-// ===== Member form page (member-form.html) — backed by /api/members =====
+// ===== All Notes page (notes.html) =====
 (function () {
-  const form = document.getElementById('memberForm');
-  const tableBody = document.getElementById('membersTableBody');
+  const notesGrid = document.getElementById('notesGrid');
+  const noteCountEl = document.getElementById('noteCount');
+  const statTotalNotes = document.getElementById('statTotalNotes');
+  const statTotalUsers = document.getElementById('statTotalUsers');
+  const statNotesToday = document.getElementById('statNotesToday');
+  const searchInput = document.getElementById('noteSearchInput');
+  const userFilterSelect = document.getElementById('userFilterSelect');
+  const sortSelect = document.getElementById('sortSelect');
+  const refreshBtn = document.getElementById('refreshBtn');
+  const paginationEl = document.getElementById('notesPagination');
+  const paginationSummaryEl = document.getElementById('notesPaginationSummary');
 
-  if (!form || !tableBody) return;
+  if (!notesGrid) return;
 
-  const API_BASE = '/api/members';
+  const CHAT_USER_KEY = 'notesCircleChatUser';
+  const BOOKMARKS_KEY = 'notesCircleBookmarks';
+  const PER_PAGE = 8;
+  const AVATAR_COLORS = ['#7C5CFC', '#3B82F6', '#10B981', '#F59E0B', '#EC4899', '#14B8A6'];
+  const CARD_ACCENTS = ['#7C5CFC', '#3B82F6', '#10B981', '#F59E0B', '#EC4899', '#14B8A6'];
 
-  const submitBtn = document.getElementById('submitBtn');
-  const cancelEditBtn = document.getElementById('cancelEditBtn');
-  const formTitle = document.getElementById('formTitle');
+  let allNotes = [];
+  let currentPage = 1;
+  let openMenuId = null;
 
-  const firstNameInput = document.getElementById('firstName');
-  const lastNameInput = document.getElementById('lastName');
-  const addressInput = document.getElementById('address');
-  const ageInput = document.getElementById('age');
-  const genderInput = document.getElementById('gender');
-  const phoneInput = document.getElementById('phone');
-  const emailInput = document.getElementById('email');
-  const descriptionInput = document.getElementById('description');
-
-  let members = [];
-  let editingId = null;
-
-  // The API returns Supabase's exact column names (FirstName, LastName,
-  // etc.). Convert each row to the camelCase shape the rest of this file
-  // already expects.
-  function normalizeMember(row) {
-    return {
-      id: row.id,
-      firstName: row.FirstName,
-      lastName: row.LastName,
-      address: row.Address,
-      age: row.Age,
-      gender: row.Gender,
-      phone: row.Phone,
-      email: row.Email,
-      description: row.Description,
-      submittedAt: row.SubmittedAt
-    };
+  function getCurrentChatUser() {
+    try {
+      const raw = localStorage.getItem(CHAT_USER_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      return null;
+    }
   }
 
-  function formatSubmittedAt(value) {
+  function getBookmarks() {
+    try {
+      const raw = localStorage.getItem(BOOKMARKS_KEY);
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function toggleBookmark(noteId) {
+    const bookmarks = getBookmarks();
+    const idx = bookmarks.indexOf(noteId);
+    if (idx === -1) {
+      bookmarks.push(noteId);
+    } else {
+      bookmarks.splice(idx, 1);
+    }
+    localStorage.setItem(BOOKMARKS_KEY, JSON.stringify(bookmarks));
+    return bookmarks.indexOf(noteId) !== -1;
+  }
+
+  function colorFor(palette, key) {
+    const n = Math.abs(Number(key) || 0);
+    return palette[n % palette.length];
+  }
+
+  function initialsFor(note) {
+    const a = (note.first_name || '').trim().charAt(0);
+    const b = (note.last_name || '').trim().charAt(0);
+    const initials = (a + b).toUpperCase();
+    return initials || '?';
+  }
+
+  function nameFor(note) {
+    const name = ((note.first_name || '') + ' ' + (note.last_name || '')).trim();
+    return name || 'Someone';
+  }
+
+  function timeAgo(value) {
     if (!value) return '';
     const date = new Date(value);
-    return isNaN(date.getTime()) ? value : date.toLocaleString();
+    if (isNaN(date.getTime())) return value;
+
+    const diffMs = Date.now() - date.getTime();
+    const diffSec = Math.floor(diffMs / 1000);
+
+    if (diffSec < 60) return 'just now';
+    const diffMin = Math.floor(diffSec / 60);
+    if (diffMin < 60) return diffMin + (diffMin === 1 ? ' minute ago' : ' minutes ago');
+    const diffHour = Math.floor(diffMin / 60);
+    if (diffHour < 24) return diffHour + (diffHour === 1 ? ' hour ago' : ' hours ago');
+    const diffDay = Math.floor(diffHour / 24);
+    if (diffDay < 7) return diffDay + (diffDay === 1 ? ' day ago' : ' days ago');
+    return date.toLocaleDateString();
+  }
+
+  function isToday(value) {
+    if (!value) return false;
+    const date = new Date(value);
+    if (isNaN(date.getTime())) return false;
+    const now = new Date();
+    return date.getFullYear() === now.getFullYear() &&
+      date.getMonth() === now.getMonth() &&
+      date.getDate() === now.getDate();
   }
 
   async function readJson(response) {
@@ -423,316 +499,278 @@
     }
   }
 
-  async function fetchMembers() {
-    try {
-      const response = await fetch(API_BASE);
-      const data = await readJson(response);
-      if (!response.ok) {
-        throw new Error((data && data.error) || 'Failed to load members.');
+  function populateUserFilter(notes) {
+    const seen = new Map();
+    notes.forEach(function (n) {
+      if (n.user_id && !seen.has(n.user_id)) {
+        seen.set(n.user_id, nameFor(n));
       }
-      members = Array.isArray(data) ? data.map(normalizeMember) : [];
-      renderTable();
-    } catch (err) {
-      tableBody.innerHTML =
-        '<tr class="empty-row"><td colspan="10">Could not load members: ' + err.message + '</td></tr>';
-    }
-  }
-
-  async function createMember(entryData) {
-    const response = await fetch(API_BASE, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(entryData)
     });
-    const data = await readJson(response);
-    if (!response.ok) {
-      throw new Error((data && data.error) || 'Failed to add member.');
-    }
-  }
 
-  async function updateMemberOnServer(id, entryData) {
-    const response = await fetch(API_BASE + '/' + id, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(entryData)
+    const previousValue = userFilterSelect.value;
+    userFilterSelect.innerHTML = '<option value="">All Users</option>';
+    seen.forEach(function (name, userId) {
+      const opt = document.createElement('option');
+      opt.value = String(userId);
+      opt.textContent = name;
+      userFilterSelect.appendChild(opt);
     });
-    const data = await readJson(response);
-    if (!response.ok) {
-      throw new Error((data && data.error) || 'Failed to update member.');
-    }
+    userFilterSelect.value = previousValue;
   }
 
-  async function deleteMemberOnServer(id) {
-    const response = await fetch(API_BASE + '/' + id, { method: 'DELETE' });
-    const data = await readJson(response);
-    if (!response.ok) {
-      throw new Error((data && data.error) || 'Failed to delete member.');
-    }
+  function updateStats(notes) {
+    statTotalNotes.textContent = String(notes.length);
+    const distinctUsers = new Set(notes.map(function (n) { return n.user_id; }).filter(Boolean));
+    statTotalUsers.textContent = String(distinctUsers.size);
+    statNotesToday.textContent = String(notes.filter(function (n) { return isToday(n.created_at); }).length);
   }
 
-  form.addEventListener('submit', async function (e) {
-    e.preventDefault();
+  function getFilteredSortedNotes() {
+    const query = searchInput.value.trim().toLowerCase();
+    const userFilter = userFilterSelect.value;
+    const sortOrder = sortSelect.value;
 
-    const entryData = {
-      firstName: firstNameInput.value.trim(),
-      lastName: lastNameInput.value.trim(),
-      address: addressInput.value.trim(),
-      age: ageInput.value.trim(),
-      gender: genderInput.value,
-      phone: phoneInput.value.trim(),
-      email: emailInput.value.trim(),
-      description: descriptionInput.value.trim(),
-      submittedAt: new Date().toISOString()
-    };
+    let filtered = allNotes.filter(function (n) {
+      const matchesQuery = !query || (n.notes || '').toLowerCase().includes(query);
+      const matchesUser = !userFilter || String(n.user_id) === userFilter;
+      return matchesQuery && matchesUser;
+    });
 
-    try {
-      if (editingId !== null) {
-        await updateMemberOnServer(editingId, entryData);
-      } else {
-        await createMember(entryData);
-      }
-      await fetchMembers();
-      resetForm();
-    } catch (err) {
-      alert('Could not save member: ' + err.message);
+    filtered.sort(function (a, b) {
+      const aTime = new Date(a.created_at).getTime() || 0;
+      const bTime = new Date(b.created_at).getTime() || 0;
+      return sortOrder === 'oldest' ? aTime - bTime : bTime - aTime;
+    });
+
+    return filtered;
+  }
+
+  function buildNoteCard(note, accentColor) {
+    const card = document.createElement('div');
+    card.classList.add('note-card');
+
+    const top = document.createElement('div');
+    top.classList.add('note-card-top');
+    top.style.background = accentColor;
+    card.appendChild(top);
+
+    const body = document.createElement('div');
+    body.classList.add('note-card-body');
+
+    const header = document.createElement('div');
+    header.classList.add('note-card-header');
+
+    const avatar = document.createElement('div');
+    avatar.classList.add('note-avatar');
+    avatar.style.background = colorFor(AVATAR_COLORS, note.user_id);
+    avatar.textContent = initialsFor(note);
+    header.appendChild(avatar);
+
+    const meta = document.createElement('div');
+    meta.classList.add('note-card-meta');
+
+    const author = document.createElement('div');
+    author.classList.add('note-author');
+    author.textContent = nameFor(note);
+    meta.appendChild(author);
+
+    const time = document.createElement('div');
+    time.classList.add('note-time');
+    time.textContent = timeAgo(note.created_at);
+    meta.appendChild(time);
+
+    header.appendChild(meta);
+
+    const currentChatUser = getCurrentChatUser();
+    const isOwner = currentChatUser && String(currentChatUser.id) === String(note.user_id);
+
+    if (isOwner) {
+      const menuWrap = document.createElement('div');
+      menuWrap.classList.add('note-card-menu');
+
+      const menuBtn = document.createElement('button');
+      menuBtn.classList.add('note-menu-btn');
+      menuBtn.type = 'button';
+      menuBtn.textContent = '⋯';
+
+      const dropdown = document.createElement('div');
+      dropdown.classList.add('note-menu-dropdown');
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.type = 'button';
+      deleteBtn.textContent = 'Delete';
+      deleteBtn.addEventListener('click', function () {
+        deleteNote(note.id, currentChatUser.token);
+      });
+      dropdown.appendChild(deleteBtn);
+
+      menuBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        const isOpen = dropdown.classList.contains('open');
+        document.querySelectorAll('.note-menu-dropdown.open').forEach(function (el) {
+          el.classList.remove('open');
+        });
+        if (!isOpen) dropdown.classList.add('open');
+      });
+
+      menuWrap.appendChild(menuBtn);
+      menuWrap.appendChild(dropdown);
+      header.appendChild(menuWrap);
     }
-  });
 
-  cancelEditBtn.addEventListener('click', resetForm);
+    body.appendChild(header);
 
-  function renderTable() {
-    tableBody.innerHTML = '';
+    const text = document.createElement('p');
+    text.classList.add('note-text');
+    text.textContent = note.notes;
+    body.appendChild(text);
 
-    if (members.length === 0) {
-      tableBody.innerHTML = '<tr class="empty-row"><td colspan="10">No members added yet.</td></tr>';
+    const actions = document.createElement('div');
+    actions.classList.add('note-card-actions');
+
+    const copyBtn = document.createElement('button');
+    copyBtn.type = 'button';
+    copyBtn.classList.add('note-action-btn');
+    copyBtn.textContent = '⧉ Copy';
+    copyBtn.addEventListener('click', function () {
+      navigator.clipboard.writeText(note.notes).then(function () {
+        copyBtn.textContent = '✓ Copied';
+        setTimeout(function () { copyBtn.textContent = '⧉ Copy'; }, 1500);
+      }).catch(function () {
+        copyBtn.textContent = 'Could not copy';
+        setTimeout(function () { copyBtn.textContent = '⧉ Copy'; }, 1500);
+      });
+    });
+    actions.appendChild(copyBtn);
+
+    const bookmarks = getBookmarks();
+    const bookmarkBtn = document.createElement('button');
+    bookmarkBtn.type = 'button';
+    bookmarkBtn.classList.add('note-action-btn');
+    if (bookmarks.indexOf(note.id) !== -1) bookmarkBtn.classList.add('bookmarked');
+    bookmarkBtn.textContent = '🔖 Saved for me';
+    bookmarkBtn.title = 'Bookmarks are saved only in this browser';
+    bookmarkBtn.addEventListener('click', function () {
+      const isBookmarked = toggleBookmark(note.id);
+      bookmarkBtn.classList.toggle('bookmarked', isBookmarked);
+    });
+    actions.appendChild(bookmarkBtn);
+
+    body.appendChild(actions);
+    card.appendChild(body);
+    return card;
+  }
+
+  function renderPage() {
+    const filtered = getFilteredSortedNotes();
+    const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
+    if (currentPage > totalPages) currentPage = totalPages;
+
+    noteCountEl.textContent = filtered.length + (filtered.length === 1 ? ' note' : ' notes');
+
+    notesGrid.innerHTML = '';
+
+    if (filtered.length === 0) {
+      notesGrid.innerHTML = '<div class="empty-state">No notes match what you are looking for.</div>';
+      paginationEl.innerHTML = '';
+      paginationSummaryEl.textContent = '';
       return;
     }
 
-    members.forEach(function (m) {
-      const row = document.createElement('tr');
-      row.innerHTML =
-        '<td>' + m.firstName + '</td>' +
-        '<td>' + m.lastName + '</td>' +
-        '<td>' + m.address + '</td>' +
-        '<td>' + m.age + '</td>' +
-        '<td>' + m.gender + '</td>' +
-        '<td>' + m.phone + '</td>' +
-        '<td>' + m.email + '</td>' +
-        '<td>' + m.description + '</td>' +
-        '<td>' + formatSubmittedAt(m.submittedAt) + '</td>' +
-        '<td>' +
-          '<button type="button" class="action-btn edit-btn" data-id="' + m.id + '">Edit</button>' +
-          '<button type="button" class="action-btn delete-btn" data-id="' + m.id + '">Delete</button>' +
-        '</td>';
-      tableBody.appendChild(row);
+    const startIdx = (currentPage - 1) * PER_PAGE;
+    const pageItems = filtered.slice(startIdx, startIdx + PER_PAGE);
+
+    pageItems.forEach(function (note, i) {
+      const accent = colorFor(CARD_ACCENTS, startIdx + i);
+      notesGrid.appendChild(buildNoteCard(note, accent));
     });
 
-    document.querySelectorAll('.edit-btn').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        startEdit(parseInt(btn.dataset.id, 10));
-      });
-    });
-
-    document.querySelectorAll('.delete-btn').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        deleteMember(parseInt(btn.dataset.id, 10));
-      });
-    });
+    renderPagination(totalPages, filtered.length, startIdx, pageItems.length);
   }
 
-  function startEdit(id) {
-    const m = members.find(function (member) { return member.id === id; });
-    if (!m) return;
+  function renderPagination(totalPages, totalItems, startIdx, pageItemCount) {
+    paginationEl.innerHTML = '';
 
-    editingId = id;
-
-    firstNameInput.value = m.firstName || '';
-    lastNameInput.value = m.lastName || '';
-    addressInput.value = m.address || '';
-    ageInput.value = m.age || '';
-    genderInput.value = m.gender || '';
-    phoneInput.value = m.phone || '';
-    emailInput.value = m.email || '';
-    descriptionInput.value = m.description || '';
-
-    submitBtn.textContent = 'Update Member';
-    formTitle.textContent = 'Edit Member';
-    cancelEditBtn.hidden = false;
-  }
-
-  async function deleteMember(id) {
-    try {
-      await deleteMemberOnServer(id);
-      if (editingId === id) resetForm();
-      await fetchMembers();
-    } catch (err) {
-      alert('Could not delete member: ' + err.message);
+    function makeBtn(label, page, opts) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = label;
+      if (opts && opts.active) btn.classList.add('active');
+      if (opts && opts.disabled) btn.disabled = true;
+      btn.addEventListener('click', function () {
+        currentPage = page;
+        renderPage();
+      });
+      return btn;
     }
-  }
 
-  function resetForm() {
-    form.reset();
-    editingId = null;
-    submitBtn.textContent = 'Add Member';
-    formTitle.textContent = 'Add a Member';
-    cancelEditBtn.hidden = true;
-  }
+    paginationEl.appendChild(makeBtn('‹', Math.max(1, currentPage - 1), { disabled: currentPage === 1 }));
 
-  fetchMembers();
-})();
-// ===== Notes page (notes.html) — loads all notes from /api/notes-history/all =====
-(function () {
-  const grid = document.getElementById('notesGrid');
-  const countBadge = document.getElementById('noteCount');
-  const refreshBtn = document.getElementById('refreshBtn');
-
-  if (!grid || !countBadge || !refreshBtn) return;
-
-  const signInLink  = document.getElementById('signInLink');
-  const logoutBtn   = document.getElementById('logoutBtn');
-  const welcomeText = document.getElementById('welcomeText');
-  const USER_KEY      = 'notesCircleUser';
-  const CHAT_USER_KEY = 'notesCircleChatUser';
-
-  // The chat widget stores the token; use it to identify the logged-in chatter
-  function getChatUser() {
-    try { return JSON.parse(localStorage.getItem(CHAT_USER_KEY) || 'null'); } catch (e) { return null; }
-  }
-
-  function refreshNav() {
-    try {
-      var raw  = localStorage.getItem(USER_KEY);
-      var user = raw ? JSON.parse(raw) : null;
-      if (user) {
-        if (signInLink)  signInLink.style.display  = 'none';
-        if (logoutBtn)   logoutBtn.style.display   = 'inline-block';
-        if (welcomeText) { welcomeText.style.display = 'inline'; welcomeText.textContent = 'Hi, ' + user.displayName; }
-      } else {
-        if (signInLink)  signInLink.style.display  = 'inline-block';
-        if (logoutBtn)   logoutBtn.style.display   = 'none';
-        if (welcomeText) welcomeText.style.display = 'none';
+    for (let p = 1; p <= totalPages; p++) {
+      if (totalPages > 7 && p !== 1 && p !== totalPages && Math.abs(p - currentPage) > 1) {
+        if (p === 2 || p === totalPages - 1) {
+          const ellipsis = document.createElement('span');
+          ellipsis.textContent = '…';
+          ellipsis.style.padding = '0 4px';
+          paginationEl.appendChild(ellipsis);
+        }
+        continue;
       }
-    } catch (e) {}
+      paginationEl.appendChild(makeBtn(String(p), p, { active: p === currentPage }));
+    }
+
+    paginationEl.appendChild(makeBtn('›', Math.min(totalPages, currentPage + 1), { disabled: currentPage === totalPages }));
+
+    paginationSummaryEl.textContent =
+      'Showing ' + (startIdx + 1) + ' to ' + (startIdx + pageItemCount) + ' of ' + totalItems + ' notes';
   }
 
-  if (logoutBtn) {
-    logoutBtn.addEventListener('click', function () {
-      localStorage.removeItem(USER_KEY);
-      refreshNav();
-    });
-  }
-
-  refreshNav();
-
-  const COLORS = ['yellow', 'green'];
-  var colorIdx = 0;
-  function nextColor() {
-    var c = COLORS[colorIdx % COLORS.length];
-    colorIdx++;
-    return c;
-  }
-
-  function formatDate(iso) {
-    if (!iso) return '';
-    var d = new Date(iso);
-    return isNaN(d.getTime()) ? iso : d.toLocaleString();
-  }
-
-  async function deleteNote(noteId, token, card) {
-    if (!confirm('Delete this note?')) return;
+  async function deleteNote(noteId, token) {
+    if (!token) return;
+    if (!window.confirm('Delete this note? This cannot be undone.')) return;
     try {
-      var res = await fetch('/api/notes-history/' + noteId, {
+      const response = await fetch('/api/notes-history/' + noteId, {
         method: 'DELETE',
         headers: { 'X-User-Token': token }
       });
-      var data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Could not delete.');
-      card.remove();
-      var current = parseInt(countBadge.textContent, 10);
-      if (!isNaN(current)) countBadge.textContent = current - 1;
-    } catch (err) {
-      alert('Delete failed: ' + err.message);
-    }
-  }
-
-  function renderNotes(notes) {
-    grid.innerHTML = '';
-    var chatUser = getChatUser();
-
-    if (!notes || notes.length === 0) {
-      countBadge.textContent = '0';
-      grid.innerHTML =
-        '<div class="empty-state">' +
-          '<span class="emoji">📭</span>' +
-          'No notes yet. Open the chat widget on the home page and send your first note!' +
-        '</div>';
-      return;
-    }
-
-    countBadge.textContent = notes.length;
-    colorIdx = 0;
-
-    notes.forEach(function (n) {
-      var card = document.createElement('div');
-      var isMine = chatUser && chatUser.id && n.user_id === chatUser.id;
-      card.classList.add('note-card', nextColor());
-      if (isMine) card.classList.add('is-mine');
-
-      var text = document.createElement('div');
-      text.classList.add('note-text');
-      text.textContent = n.notes || n.note || '';
-      card.appendChild(text);
-
-      var meta = document.createElement('div');
-      meta.classList.add('note-meta');
-
-      var author = document.createElement('span');
-      author.classList.add('note-author');
-      var firstName = n.first_name || '';
-      var lastName  = n.last_name  || '';
-      author.textContent = '— ' + ((firstName || lastName) ? (firstName + ' ' + lastName).trim() : 'Anonymous');
-      meta.appendChild(author);
-
-      var time = document.createElement('span');
-      time.textContent = formatDate(n.created_at);
-      meta.appendChild(time);
-
-      card.appendChild(meta);
-
-      // Delete button — only visible on own notes (CSS .is-mine controls display)
-      if (isMine) {
-        var delBtn = document.createElement('button');
-        delBtn.type = 'button';
-        delBtn.classList.add('delete-note-btn');
-        delBtn.textContent = '🗑 Delete';
-        delBtn.addEventListener('click', function () {
-          deleteNote(n.id, chatUser.token, card);
-        });
-        card.appendChild(delBtn);
+      const data = await readJson(response);
+      if (!response.ok) {
+        throw new Error((data && data.error) || 'Could not delete that note.');
       }
-
-      grid.appendChild(card);
-    });
+      await loadNotes();
+    } catch (err) {
+      window.alert('Could not delete note: ' + err.message);
+    }
   }
 
   async function loadNotes() {
-    grid.innerHTML = '<div class="loading-state">Loading notes…</div>';
-    countBadge.textContent = '…';
+    notesGrid.innerHTML = '<div class="loading-state">Loading notes…</div>';
     try {
-      var res  = await fetch('/api/notes-history/all');
-      var data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to load notes.');
-      renderNotes(Array.isArray(data) ? data : []);
+      const response = await fetch('/api/notes-history/all');
+      const data = await readJson(response);
+      if (!response.ok) {
+        throw new Error((data && data.error) || 'Could not load notes.');
+      }
+      allNotes = Array.isArray(data) ? data : [];
+      updateStats(allNotes);
+      populateUserFilter(allNotes);
+      currentPage = 1;
+      renderPage();
     } catch (err) {
-      grid.innerHTML =
-        '<div class="empty-state">' +
-          '<span class="emoji">⚠️</span>' +
-          'Could not load notes: ' + err.message +
-        '</div>';
-      countBadge.textContent = '!';
+      notesGrid.innerHTML = '<div class="empty-state">Could not load notes: ' + err.message + '</div>';
     }
   }
 
+  searchInput.addEventListener('input', function () { currentPage = 1; renderPage(); });
+  userFilterSelect.addEventListener('change', function () { currentPage = 1; renderPage(); });
+  sortSelect.addEventListener('change', function () { currentPage = 1; renderPage(); });
   refreshBtn.addEventListener('click', loadNotes);
+
+  document.addEventListener('click', function () {
+    document.querySelectorAll('.note-menu-dropdown.open').forEach(function (el) {
+      el.classList.remove('open');
+    });
+  });
+
   loadNotes();
 })();

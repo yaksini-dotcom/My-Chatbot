@@ -4,40 +4,102 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Notes Circle</title>
-<link rel="stylesheet" href="../static/css/style.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/static/css/style.css" />
 </head>
 <body>
+
   <nav class="top-nav">
     <a href="/" class="brand">Notes Circle</a>
     <div class="nav-right">
       <a href="/notes" class="nav-link">All Notes</a>
-      <a href="/member-form" class="nav-link">Contact Details</a>
       <a href="/login" id="signInLink" class="nav-link secondary">Sign In</a>
       <span id="welcomeText" style="display:none;"></span>
-      <button type="button" id="uploadBtn" class="nav-link" style="display:none;">Upload</button>
+      <button type="button" id="uploadBtn" class="nav-link" style="display:none;">+ Add Note</button>
       <button type="button" id="logoutBtn" class="nav-link secondary" style="display:none;">Log Out</button>
     </div>
   </nav>
 
-  <div class="page">
-    <header class="hero">
-      <h1>One shared notebook for the whole group.</h1>
-      <p>Notes Circle is where the group's notes live, the same way a group chat is where the group's messages live.</p>
-    </header>
-
-    <div class="board-grid" id="boardGrid">
-      <div class="note note--yellow">
-        June reading list — add your pick before Friday's call.
-        <span class="author">— Yaksu</span>
+  <!-- ── Hero ───────────────────────────────────────────── -->
+  <section class="hero-section">
+    <div class="hero-inner">
+      <div class="hero-text">
+        <p class="hero-eyebrow">Your group's shared notebook</p>
+        <h1 class="hero-headline">One place for<br><span class="hero-accent">every note</span><br>you all share.</h1>
+        <p class="hero-sub">Notes Circle is where the group's notes live — the same way a group chat is where the group's messages live. Write it once, share it with everyone.</p>
+        <div class="hero-actions">
+          <a href="/notes" class="cta-primary">Browse Notes</a>
+          <a href="/login" id="heroSignInLink" class="cta-secondary">Join the Circle →</a>
+          <span id="heroWelcome" style="display:none;" class="hero-welcome-msg"></span>
+        </div>
       </div>
-      <div class="note note--green">
-        Grandma's lemon cake recipe, finally written down properly.
-        <span class="author">— Shana</span>
+      <div class="hero-visual">
+        <div class="floating-note fn-1 note--yellow">
+          <span class="fn-tag">📚 Reading</span>
+          June reading list — add your pick before Friday's call.
+          <span class="fn-author">— Yaksu</span>
+        </div>
+        <div class="floating-note fn-2 note--green">
+          <span class="fn-tag">🍋 Recipe</span>
+          Grandma's lemon cake recipe, finally written down properly.
+          <span class="fn-author">— Shana</span>
+        </div>
+        <div class="floating-note fn-3 note--yellow">
+          <span class="fn-tag">🗺️ Plans</span>
+          Weekend trip ideas — vote on your favourite by Thursday.
+          <span class="fn-author">— Remi</span>
+        </div>
       </div>
     </div>
-  </div>
+  </section>
 
-  <!-- Upload modal -->
+  <!-- ── How it works ───────────────────────────────────── -->
+  <section class="how-section">
+    <div class="how-inner">
+      <h2 class="section-title">How it works</h2>
+      <div class="how-grid">
+        <div class="how-card">
+          <div class="how-icon">💬</div>
+          <h3>Chat to add</h3>
+          <p>Open the chat bubble and type your note. The assistant saves it under your name instantly.</p>
+        </div>
+        <div class="how-card">
+          <div class="how-icon">👥</div>
+          <h3>Everyone sees it</h3>
+          <p>Head to All Notes to browse everything the circle has shared — searchable, filterable, paginated.</p>
+        </div>
+        <div class="how-card">
+          <div class="how-icon">🗂️</div>
+          <h3>Stay organised</h3>
+          <p>Filter by person, sort by date, bookmark what matters to you. Your circle's memory, kept tidy.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Live board ──────────────────────────────────────── -->
+  <section class="board-section">
+    <div class="board-inner">
+      <div class="board-header">
+        <h2 class="section-title">Recently pinned</h2>
+        <a href="/notes" class="view-all-link">View all notes →</a>
+      </div>
+      <div class="board-grid" id="boardGrid">
+        <div class="note note--yellow">
+          June reading list — add your pick before Friday's call.
+          <span class="author">— Yaksu</span>
+        </div>
+        <div class="note note--green">
+          Grandma's lemon cake recipe, finally written down properly.
+          <span class="author">— Shana</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Upload modal ───────────────────────────────────── -->
   <div class="modal-overlay" id="uploadModal">
     <div class="modal-card">
       <h2>Add a Note</h2>
@@ -56,7 +118,7 @@
     </div>
   </div>
 
-  <!-- Chat widget -->
+  <!-- ── Chat widget ────────────────────────────────────── -->
   <button id="chat-icon">💬</button>
 
   <div id="chat-box">
@@ -68,6 +130,21 @@
     </div>
   </div>
 
-  <script src="../static/js/script.js"></script>
+  <script src="/static/js/script.js"></script>
+  <script>
+    // Sync hero sign-in link with login state
+    (function () {
+      const USER_KEY = 'notesCircleUser';
+      const heroSignIn = document.getElementById('heroSignInLink');
+      const heroWelcome = document.getElementById('heroWelcome');
+      try {
+        const u = JSON.parse(localStorage.getItem(USER_KEY) || 'null');
+        if (u && u.displayName) {
+          if (heroSignIn)  heroSignIn.style.display  = 'none';
+          if (heroWelcome) { heroWelcome.style.display = 'inline'; heroWelcome.textContent = 'Welcome back, ' + u.displayName + '!'; }
+        }
+      } catch (e) {}
+    })();
+  </script>
 </body>
 </html>
