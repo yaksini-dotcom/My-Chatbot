@@ -6,7 +6,6 @@ import requests
 from dotenv import load_dotenv
 from flask import Flask, jsonify, render_template, request
 
-# Support both .env and _env filenames
 load_dotenv('.env')
 load_dotenv('_env')
 
@@ -30,7 +29,7 @@ USERS_TABLE = 'Users'
 NOTES_TABLE = 'NotesHistory'
 
 
-def supabase_url(table_name, query=''):
+def supabase_table_url(table_name, query=''):
     return f'{SUPABASE_URL}/rest/v1/{quote(table_name, safe="")}{query}'
 
 
@@ -52,65 +51,84 @@ def user_to_json(user):
     }
 
 
-# ── Page routes ────────────────────────────────────────────
+#  Page routes 
 
 @app.route('/')
 def home():
     return render_template('index.html')
 
-
 @app.route('/login')
 def login():
     return render_template('login.html')
-
 
 @app.route('/notes')
 def notes_page():
     return render_template('notes.html')
 
 
-# ── Chat users ─────────────────────────────────────────────
+#  Auth: login by email only (existing user) 
 
-@app.route('/api/chat-users', methods=['POST'])
-def chat_login():
+@app.route('/api/chat-users/login', methods=['POST'])
+def chat_login_email():
+    """Login with email only — returns user if found, error if not."""
     body = request.get_json() or {}
-    first_name = (body.get('firstName') or '').strip()
-    last_name  = (body.get('lastName')  or '').strip()
-    email      = (body.get('email')     or '').strip()
+    email = (body.get('email') or '').strip().lower()
+    if not email:
+        return jsonify({'error': 'email is required.'}), 400
 
-    if not first_name or not last_name or not email:
-        return jsonify({'error': 'firstName, lastName, and email are required.'}), 400
-
-    # Check if user already exists by email
     lookup = requests.get(
-        supabase_url(USERS_TABLE, f'?email=eq.{quote(email)}&select=*'),
+        supabase_table_url(USERS_TABLE, f'?email=eq.{quote(email)}&select=*'),
         headers=BASE_HEADERS,
     )
     if not lookup.ok:
         return passthrough(lookup)
 
-    existing = lookup.json()
+    rows = lookup.json()
+    if not rows:
+        return jsonify({'error': 'No account found with that email. Please register.'}), 404
 
-    if existing:
-        user = existing[0]
-        # Ensure user has a token
-        if not user.get('token'):
-            token = secrets.token_urlsafe(32)
-            patch = requests.patch(
-                supabase_url(USERS_TABLE, f"?id=eq.{user['id']}"),
-                headers=WRITE_HEADERS,
-                json={'token': token},
-            )
-            if patch.ok and patch.json():
-                user = patch.json()[0]
-        result = user_to_json(user)
-        result['isNewUser'] = False
-        return jsonify(result), 200
+    user = rows[0]
+    if not user.get('token'):
+        token = secrets.token_urlsafe(32)
+        patch = requests.patch(
+            supabase_table_url(USERS_TABLE, f"?id=eq.{user['id']}"),
+            headers=WRITE_HEADERS,
+            json={'token': token},
+        )
+        if patch.ok and patch.json():
+            user = patch.json()[0]
 
-    # Create new user
+    result = user_to_json(user)
+    result['isNewUser'] = False
+    return jsonify(result), 200
+
+
+#  Auth: register with first/last/email 
+
+@app.route('/api/chat-users', methods=['POST'])
+def chat_register():
+    body = request.get_json() or {}
+    first_name = (body.get('firstName') or '').strip()
+    last_name  = (body.get('lastName')  or '').strip()
+    email      = (body.get('email')     or '').strip().lower()
+
+    if not first_name or not last_name or not email:
+        return jsonify({'error': 'firstName, lastName, and email are required.'}), 400
+
+    # Check if already exists
+    lookup = requests.get(
+        supabase_table_url(USERS_TABLE, f'?email=eq.{quote(email)}&select=*'),
+        headers=BASE_HEADERS,
+    )
+    if not lookup.ok:
+        return passthrough(lookup)
+
+    if lookup.json():
+        return jsonify({'error': 'An account with this email already exists. Please sign in instead.'}), 409
+
     token = secrets.token_urlsafe(32)
     insert = requests.post(
-        supabase_url(USERS_TABLE),
+        supabase_table_url(USERS_TABLE),
         headers=WRITE_HEADERS,
         json={
             'first_name': first_name,
@@ -138,7 +156,7 @@ def validate_chat_token():
         return jsonify({'valid': False}), 400
 
     lookup = requests.get(
-        supabase_url(USERS_TABLE, f'?token=eq.{quote(token)}&select=*'),
+        supabase_table_url(USERS_TABLE, f'?token=eq.{quote(token)}&select=*'),
         headers=BASE_HEADERS,
     )
     if not lookup.ok:
@@ -153,13 +171,12 @@ def validate_chat_token():
     return jsonify(result), 200
 
 
-# ── Notes history ──────────────────────────────────────────
+#  Notes 
 
 @app.route('/api/notes-history/all', methods=['GET'])
 def get_all_notes():
-    """Fetch all notes enriched with author first_name / last_name."""
     notes_res = requests.get(
-        supabase_url(NOTES_TABLE, '?select=*&order=created_at.desc'),
+        supabase_table_url(NOTES_TABLE, '?select=*&order=created_at.desc'),
         headers=BASE_HEADERS,
     )
     if not notes_res.ok:
@@ -169,29 +186,23 @@ def get_all_notes():
     if not notes:
         return jsonify([]), 200
 
-    # Batch-fetch user names for every user_id that appears in notes
     user_ids = list({n['user_id'] for n in notes if n.get('user_id') is not None})
     user_map = {}
     if user_ids:
         id_filter = 'id=in.(' + ','.join(str(uid) for uid in user_ids) + ')'
         users_res = requests.get(
-            supabase_url(USERS_TABLE, f'?{id_filter}&select=id,first_name,last_name'),
+            supabase_table_url(USERS_TABLE, f'?{id_filter}&select=id,first_name,last_name'),
             headers=BASE_HEADERS,
         )
         if users_res.ok:
             for u in (users_res.json() or []):
                 user_map[u['id']] = u
 
-    # Enrich each note with author names
     enriched = []
     for n in notes:
         uid  = n.get('user_id')
         user = user_map.get(uid, {})
-        enriched.append({
-            **n,
-            'first_name': user.get('first_name', ''),
-            'last_name':  user.get('last_name',  ''),
-        })
+        enriched.append({**n, 'first_name': user.get('first_name', ''), 'last_name': user.get('last_name', '')})
 
     return jsonify(enriched), 200
 
@@ -202,7 +213,7 @@ def get_notes_history():
     query = '?select=*&order=created_at.desc'
     if user_id:
         query = f'?user_id=eq.{user_id}&select=*&order=created_at.desc'
-    response = requests.get(supabase_url(NOTES_TABLE, query), headers=BASE_HEADERS)
+    response = requests.get(supabase_table_url(NOTES_TABLE, query), headers=BASE_HEADERS)
     return passthrough(response)
 
 
@@ -216,23 +227,22 @@ def create_note_history():
         return jsonify({'error': 'userId and note are required.'}), 400
 
     response = requests.post(
-        supabase_url(NOTES_TABLE),
+        supabase_table_url(NOTES_TABLE),
         headers=WRITE_HEADERS,
         json={'user_id': user_id, 'notes': note_text},
     )
     return passthrough(response)
 
 
-@app.route('/api/notes-history/<int:note_id>', methods=['DELETE'])
-def delete_note_history(note_id):
-    """Delete a note — only the note's owner may do this."""
+@app.route('/api/notes-history/<int:note_id>', methods=['PATCH'])
+def edit_note_history(note_id):
+    
     token = request.headers.get('X-User-Token', '')
     if not token:
         return jsonify({'error': 'Authentication required.'}), 401
 
-    # Validate token → get user id
     token_res = requests.get(
-        supabase_url(USERS_TABLE, f'?token=eq.{quote(token)}&select=id'),
+        supabase_table_url(USERS_TABLE, f'?token=eq.{quote(token)}&select=id'),
         headers=BASE_HEADERS,
     )
     if not token_res.ok or not token_res.json():
@@ -240,9 +250,47 @@ def delete_note_history(note_id):
 
     user_id = token_res.json()[0]['id']
 
-    # Confirm the note belongs to this user
     note_res = requests.get(
-        supabase_url(NOTES_TABLE, f'?id=eq.{note_id}&select=user_id'),
+        supabase_table_url(NOTES_TABLE, f'?id=eq.{note_id}&select=user_id'),
+        headers=BASE_HEADERS,
+    )
+    if not note_res.ok or not note_res.json():
+        return jsonify({'error': 'Note not found.'}), 404
+
+    if note_res.json()[0]['user_id'] != user_id:
+        return jsonify({'error': 'You can only edit your own notes.'}), 403
+
+    body = request.get_json() or {}
+    note_text = (body.get('note') or '').strip()
+    if not note_text:
+        return jsonify({'error': 'note text is required.'}), 400
+
+    patch_res = requests.patch(
+        supabase_table_url(NOTES_TABLE, f'?id=eq.{note_id}'),
+        headers=WRITE_HEADERS,
+        json={'notes': note_text},
+    )
+    return passthrough(patch_res)
+
+
+@app.route('/api/notes-history/<int:note_id>', methods=['DELETE'])
+def delete_note_history(note_id):
+    
+    token = request.headers.get('X-User-Token', '')
+    if not token:
+        return jsonify({'error': 'Authentication required.'}), 401
+
+    token_res = requests.get(
+        supabase_table_url(USERS_TABLE, f'?token=eq.{quote(token)}&select=id'),
+        headers=BASE_HEADERS,
+    )
+    if not token_res.ok or not token_res.json():
+        return jsonify({'error': 'Invalid token.'}), 401
+
+    user_id = token_res.json()[0]['id']
+
+    note_res = requests.get(
+        supabase_table_url(NOTES_TABLE, f'?id=eq.{note_id}&select=user_id'),
         headers=BASE_HEADERS,
     )
     if not note_res.ok or not note_res.json():
@@ -252,7 +300,7 @@ def delete_note_history(note_id):
         return jsonify({'error': 'You can only delete your own notes.'}), 403
 
     del_res = requests.delete(
-        supabase_url(NOTES_TABLE, f'?id=eq.{note_id}'),
+        supabase_table_url(NOTES_TABLE, f'?id=eq.{note_id}'),
         headers=WRITE_HEADERS,
     )
     return passthrough(del_res)

@@ -11,31 +11,30 @@
 </head>
 <body>
 
+  <!-- ── Nav ── -->
   <nav class="top-nav">
-    <a href="/" class="brand">Notes Circle</a>
+    <a href="/" class="brand">📝 Notes Circle</a>
     <div class="nav-right">
       <a href="/notes" class="nav-link">All Notes</a>
-      <a href="/login" id="signInLink" class="nav-link secondary">Sign In</a>
-      <span id="welcomeText" style="display:none;"></span>
-      <button type="button" id="uploadBtn" class="nav-link" style="display:none;">+ Add Note</button>
+      <span id="welcomeText" class="welcome-pill" style="display:none;"></span>
       <button type="button" id="logoutBtn" class="nav-link secondary" style="display:none;">Log Out</button>
+      <button type="button" id="openAuthBtn" class="nav-link secondary" style="display:none;">Sign In</button>
     </div>
   </nav>
 
-  <!-- ── Hero ───────────────────────────────────────────── -->
+  <!-- ── Hero ── -->
   <section class="hero-section">
     <div class="hero-inner">
       <div class="hero-text">
         <p class="hero-eyebrow">Your group's shared notebook</p>
         <h1 class="hero-headline">One place for<br><span class="hero-accent">every note</span><br>you all share.</h1>
-        <p class="hero-sub">Notes Circle is where the group's notes live — the same way a group chat is where the group's messages live. Write it once, share it with everyone.</p>
+        <p class="hero-sub">Write it once, share it with everyone. Notes Circle keeps your group's ideas, recipes, and reminders in one living notebook.</p>
         <div class="hero-actions">
-          <a href="/notes" class="cta-primary">Browse Notes</a>
-          <a href="/login" id="heroSignInLink" class="cta-secondary">Join the Circle →</a>
-          <span id="heroWelcome" style="display:none;" class="hero-welcome-msg"></span>
+          <button type="button" class="cta-primary" id="heroGetStarted">Get Started Free</button>
+          <a href="/notes" class="cta-secondary">Browse Notes →</a>
         </div>
       </div>
-      <div class="hero-visual">
+      <div class="hero-visual" aria-hidden="true">
         <div class="floating-note fn-1 note--yellow">
           <span class="fn-tag">📚 Reading</span>
           June reading list — add your pick before Friday's call.
@@ -43,7 +42,7 @@
         </div>
         <div class="floating-note fn-2 note--green">
           <span class="fn-tag">🍋 Recipe</span>
-          Grandma's lemon cake recipe, finally written down properly.
+          Grandma's lemon cake, finally written down properly.
           <span class="fn-author">— Shana</span>
         </div>
         <div class="floating-note fn-3 note--yellow">
@@ -55,96 +54,172 @@
     </div>
   </section>
 
-  <!-- ── How it works ───────────────────────────────────── -->
+  <!-- ── Notes Store Panel ── -->
+  <section class="store-section" id="storeSection">
+    <div class="store-inner">
+
+      <!-- Sidebar -->
+      <aside class="store-sidebar">
+        <div class="store-brand">
+          <span class="store-brand-icon">📝</span>
+          <span class="store-brand-name">Notes Circle</span>
+        </div>
+        <div class="store-search-wrap">
+          <input type="text" id="storeSearch" class="store-search" placeholder="🔍  Search your notes..." />
+        </div>
+        <div class="store-sidebar-footer">
+          <div id="sidebarUserInfo" style="display:none;">
+            <div class="sidebar-avatar" id="sidebarAvatar"></div>
+            <div class="sidebar-user-name" id="sidebarUserName"></div>
+            <div class="sidebar-user-email" id="sidebarUserEmail"></div>
+          </div>
+          <div id="sidebarSignInPrompt">
+            <p class="sidebar-prompt">Sign in to add and manage your notes.</p>
+            <button type="button" class="btn btn-primary sidebar-sign-in-btn" id="sidebarSignInBtn">Sign In / Register</button>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Main notes area -->
+      <main class="store-main">
+
+        <!-- Shown once signed in -->
+        <div id="storeSignedInView" style="display:none;">
+          <div class="store-toolbar">
+            <h2 class="store-title">My Notes</h2>
+            <div class="store-toolbar-right">
+              <select id="storeSortSelect" class="notes-filter">
+                <option value="newest">Latest First</option>
+                <option value="oldest">Oldest First</option>
+              </select>
+              <button type="button" class="btn btn-primary" id="addNoteBtn">+ New Note</button>
+            </div>
+          </div>
+
+          <div class="store-notes-grid" id="storeNotesGrid">
+            <div class="loading-state">Loading notes…</div>
+          </div>
+
+          <div class="notes-pagination" id="storePagination"></div>
+          <p class="notes-pagination-summary" id="storePaginationSummary"></p>
+        </div>
+
+        <!-- Shown until signed in -->
+        <div id="storeSignedOutView" class="store-auth-prompt">
+          <div class="store-auth-prompt-icon">🔒</div>
+          <h2>Sign in to see your notes</h2>
+          <p>Sign in or register to view the notes you've shared and add new ones. Want to browse what everyone's sharing instead? Visit <a href="/notes">All Notes</a>.</p>
+          <div class="store-auth-prompt-actions">
+            <button type="button" class="btn btn-primary" id="promptSignInBtn">Sign In</button>
+            <button type="button" class="btn btn-secondary" id="promptRegisterBtn">Register</button>
+          </div>
+        </div>
+
+      </main>
+
+    </div>
+  </section>
+
+  <!-- ── How it works ── -->
   <section class="how-section">
     <div class="how-inner">
       <h2 class="section-title">How it works</h2>
       <div class="how-grid">
         <div class="how-card">
-          <div class="how-icon">💬</div>
-          <h3>Chat to add</h3>
-          <p>Open the chat bubble and type your note. The assistant saves it under your name instantly.</p>
+          <div class="how-icon">🔐</div>
+          <h3>Sign in or Register</h3>
+          <p>New here? Register with your name and email. Already a member? Just enter your email to get back in.</p>
         </div>
         <div class="how-card">
-          <div class="how-icon">👥</div>
-          <h3>Everyone sees it</h3>
-          <p>Head to All Notes to browse everything the circle has shared — searchable, filterable, paginated.</p>
+          <div class="how-icon">✏️</div>
+          <h3>Add your notes</h3>
+          <p>Hit "+ New Note", type your note, and it's saved instantly under your name for the whole circle to see.</p>
         </div>
         <div class="how-card">
           <div class="how-icon">🗂️</div>
-          <h3>Stay organised</h3>
-          <p>Filter by person, sort by date, bookmark what matters to you. Your circle's memory, kept tidy.</p>
+          <h3>Edit &amp; delete anytime</h3>
+          <p>Your notes are yours — edit or delete them any time. Everyone else's notes are read-only for you.</p>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- ── Live board ──────────────────────────────────────── -->
-  <section class="board-section">
-    <div class="board-inner">
-      <div class="board-header">
-        <h2 class="section-title">Recently pinned</h2>
-        <a href="/notes" class="view-all-link">View all notes →</a>
-      </div>
-      <div class="board-grid" id="boardGrid">
-        <div class="note note--yellow">
-          June reading list — add your pick before Friday's call.
-          <span class="author">— Yaksu</span>
-        </div>
-        <div class="note note--green">
-          Grandma's lemon cake recipe, finally written down properly.
-          <span class="author">— Shana</span>
-        </div>
-      </div>
-    </div>
-  </section>
+  <!-- ── Auth Modal ── -->
+  <div class="modal-overlay" id="authModal">
+    <div class="modal-card auth-modal-card">
 
-  <!-- ── Upload modal ───────────────────────────────────── -->
-  <div class="modal-overlay" id="uploadModal">
+      <!-- Tab switcher -->
+      <div class="auth-tabs">
+        <button type="button" class="auth-tab active" id="tabLogin">Sign In</button>
+        <button type="button" class="auth-tab" id="tabRegister">Register</button>
+      </div>
+
+      <!-- Login panel -->
+      <div id="loginPanel">
+        <p class="auth-desc">Enter your email to sign in to your existing account.</p>
+        <div class="modal-field">
+          <label for="loginEmail">Email</label>
+          <input type="email" id="loginEmail" placeholder="you@example.com" />
+        </div>
+        <p class="auth-error" id="loginError"></p>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" id="authCancelBtn">Cancel</button>
+          <button type="button" class="btn btn-primary" id="loginSubmitBtn">Sign In</button>
+        </div>
+      </div>
+
+      <!-- Register panel -->
+      <div id="registerPanel" style="display:none;">
+        <p class="auth-desc">Create a new account with your name and email.</p>
+        <div class="modal-field">
+          <label for="regFirstName">First Name</label>
+          <input type="text" id="regFirstName" placeholder="Yaksu" />
+        </div>
+        <div class="modal-field">
+          <label for="regLastName">Last Name</label>
+          <input type="text" id="regLastName" placeholder="Smith" />
+        </div>
+        <div class="modal-field">
+          <label for="regEmail">Email</label>
+          <input type="email" id="regEmail" placeholder="you@example.com" />
+        </div>
+        <p class="auth-error" id="registerError"></p>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" id="authCancelBtn2">Cancel</button>
+          <button type="button" class="btn btn-primary" id="registerSubmitBtn">Create Account</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── Add / Edit Note Modal ── -->
+  <div class="modal-overlay" id="noteModal">
     <div class="modal-card">
-      <h2>Add a Note</h2>
+      <h2 id="noteModalTitle">New Note</h2>
       <div class="modal-field">
-        <label for="noteText">Note text</label>
-        <textarea id="noteText" rows="3" placeholder="Write your note..."></textarea>
+        <label for="noteModalText">Note</label>
+        <textarea id="noteModalText" rows="4" placeholder="Write your note…"></textarea>
       </div>
-      <div class="modal-field">
-        <label for="noteImage">Attach an image (optional)</label>
-        <input type="file" id="noteImage" accept="image/*" />
-      </div>
+      <p class="auth-error" id="noteModalError"></p>
       <div class="modal-actions">
-        <button type="button" class="btn btn-secondary" id="cancelUploadBtn">Cancel</button>
-        <button type="button" class="btn btn-primary" id="saveUploadBtn">Post Note</button>
+        <button type="button" class="btn btn-secondary" id="noteModalCancelBtn">Cancel</button>
+        <button type="button" class="btn btn-primary" id="noteModalSaveBtn">Save Note</button>
       </div>
     </div>
   </div>
 
-  <!-- ── Chat widget ────────────────────────────────────── -->
+  <!-- ── Chat widget ── -->
   <button id="chat-icon">💬</button>
-
   <div id="chat-box">
     <div id="chat-header">Circle Assistant</div>
     <div id="chat-messages"></div>
     <div id="chat-input-area">
-      <input type="text" id="chat-input" placeholder="Type a message..." />
+      <input type="text" id="chat-input" placeholder="Type a message…" />
       <button id="send-button">Send</button>
     </div>
   </div>
 
   <script src="/static/js/script.js"></script>
-  <script>
-    // Sync hero sign-in link with login state
-    (function () {
-      const USER_KEY = 'notesCircleUser';
-      const heroSignIn = document.getElementById('heroSignInLink');
-      const heroWelcome = document.getElementById('heroWelcome');
-      try {
-        const u = JSON.parse(localStorage.getItem(USER_KEY) || 'null');
-        if (u && u.displayName) {
-          if (heroSignIn)  heroSignIn.style.display  = 'none';
-          if (heroWelcome) { heroWelcome.style.display = 'inline'; heroWelcome.textContent = 'Welcome back, ' + u.displayName + '!'; }
-        }
-      } catch (e) {}
-    })();
-  </script>
 </body>
 </html>
