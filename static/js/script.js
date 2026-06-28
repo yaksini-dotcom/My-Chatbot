@@ -855,24 +855,3 @@ async function readJson(res) {
 
   loadNotes();
 })();
-
-
-// LOGIN PAGE (login.html) 
-(function () {
-  const form          = document.getElementById('loginForm');
-  const emailInput    = document.getElementById('email');
-  const passwordInput = document.getElementById('password');
-  const errorText     = document.getElementById('errorText');
-  if (!form) return;
-
-  form.addEventListener('submit', function (e) {
-    e.preventDefault();
-    const email    = emailInput.value.trim();
-    const password = passwordInput.value;
-    if (!email || !password) { errorText.style.display = 'block'; return; }
-    errorText.style.display = 'none';
-    const displayName = email.split('@')[0];
-    localStorage.setItem('notesCircleUser', JSON.stringify({ displayName, email }));
-    window.location.href = '/';
-  });
-})();

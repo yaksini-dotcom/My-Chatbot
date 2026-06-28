@@ -57,10 +57,6 @@ def user_to_json(user):
 def home():
     return render_template('index.html')
 
-@app.route('/login')
-def login():
-    return render_template('login.html')
-
 @app.route('/notes')
 def notes_page():
     return render_template('notes.html')
@@ -304,7 +300,6 @@ def delete_note_history(note_id):
         headers=WRITE_HEADERS,
     )
     return passthrough(del_res)
-
 
 if __name__ == '__main__':
     app.run(debug=True)
