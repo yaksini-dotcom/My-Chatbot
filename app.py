@@ -66,11 +66,10 @@ def notes_page():
 
 @app.route('/api/chat-users/login', methods=['POST'])
 def chat_login_email():
-    """Login with email only — returns user if found, error if not."""
     body = request.get_json() or {}
     email = (body.get('email') or '').strip().lower()
     if not email:
-        return jsonify({'error': 'email is required.'}), 400
+         return jsonify({'error': 'email is required.'}), 400
 
     lookup = requests.get(
         supabase_table_url(USERS_TABLE, f'?email=eq.{quote(email)}&select=*'),
@@ -207,11 +206,11 @@ def get_all_notes():
 def get_notes_history():
     user_id = request.args.get('userId')
     query = '?select=*&order=created_at.desc'
-    if user_id:
+    if user_id: 
         query = f'?user_id=eq.{user_id}&select=*&order=created_at.desc'
     response = requests.get(supabase_table_url(NOTES_TABLE, query), headers=BASE_HEADERS)
     return passthrough(response)
-
+   
 
 @app.route('/api/notes-history', methods=['POST'])
 def create_note_history():
@@ -228,7 +227,7 @@ def create_note_history():
         json={'user_id': user_id, 'notes': note_text},
     )
     return passthrough(response)
-
+ 
 
 @app.route('/api/notes-history/<int:note_id>', methods=['PATCH'])
 def edit_note_history(note_id):
